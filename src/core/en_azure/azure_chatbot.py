@@ -38,15 +38,35 @@ class AzureChatbot(object):
         self.llm_model: str = None
         # to be developed [TBD]
         self.citations :list[dict] = None
+        self.citations_idx = []
 
     @staticmethod
     def get_name():
         return "AzureChatbot"
     
-    @staticmethod
-    def preprocess_response(text):
+    def reorder_response_citations(self, text):
+        # Extract the doc numbers
+        doc_numbers = re.findall(r'\[doc(\d+)\]', text)
+
+        # Get unique numbers and sort them in descending order
+        unique_numbers = sorted(set(doc_numbers), reverse=False)
+
+        # Create a mapping of old number to new number
+        substitutions = {number: str(i+1) for i, number in enumerate(unique_numbers)}
+
+        # Substitute old numbers with new numbers
+        output_text = re.sub(r'\[doc(\d+)\]', lambda match: '[doc' + substitutions[match.group(1)] + ']', text)
+        return output_text
+    
+    def preprocess_response(self, text):
         # This regex pattern looks for [docN] where N is any integer.
+        
         pattern = r'\[doc(\d+)\]'
+        
+        # Find all matches of the pattern in the string
+        matches = re.findall(pattern, text)
+        
+        reordered_text = self.reorder_response_citations(text)
         
         # The substitution function uses the number captured in the regex.
         # It applies the subscript HTML tag to the number N.
@@ -54,18 +74,17 @@ class AzureChatbot(object):
             return f'<sub>[{match.group(1)}]</sub>'
         
         # Perform the actual replacement using the regex pattern and substitution function.
-        processed_text = re.sub(pattern, subscript_replacement, text)
+        processed_text = re.sub(pattern, subscript_replacement, reordered_text)
         
-        # Find all matches of the pattern in the string
-        matches = re.findall(pattern, text)
-
         # Convert all matches to integers
-        numbers = [int(match) for match in matches]
-
-        # Output the maximum number if any are found, otherwise None
-        max_number = max(numbers) if numbers else None
+        unique_idx = list(set([int(match) - 1 for match in matches]))
         
-        return processed_text, max_number
+        if len(unique_idx) > 0:
+            self.citations = [self.citations[idx] for idx in unique_idx]
+        else:
+            self.citations = []
+        
+        return processed_text
     
 
     # conversation is list of dicts
@@ -126,4 +145,3 @@ class AzureChatbot(object):
         # {'content': '4 for details \n \n\n8 Direct Debit Authorization Form (DDA) - Selected autopay as the payment method / monthly \n\nas the payment mode \n\n- Accept agent memo to confirm DDA form will be \n\nsubmitted later \n \n\n9 Temporary Insurance Agreement (TIA) Refer to Section 3.8 for details \n \n\n10 Financial Questionnaire Refer to Section 5 to 7 for details \n \n\n11 Important Facts Statement – Policy \n\nReplacement (IFS-PR) \n\nIFS-PR is required if customer has answered “Yes” or \n“Not Yet Decided” for the “Policy Replacement” section \nof the application form. Refer to Section 3.9 for details \n \n\n12 FATCA requirements if US indicia is \n\npresent \n\nRefer to Section 11.2 for details',
         # 'filepath': 'page_009.pdf',
         # 'url': 'https://XXXXX.blob.core.windows.net/split-pdfs/page_009.pdf',
-        # }]

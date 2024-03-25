@@ -61,7 +61,7 @@ for message in st.session_state["messages"]:
             print("citations detected")
             # expander version
             
-            for index, message_citation in enumerate(message["citations"][:message["max_citations"]]):
+            for index, message_citation in enumerate(message["citations"]):
                 with st.expander(f"[{index+1}] {message_citation['filepath']}"):
                     st.markdown("""
                     
@@ -112,7 +112,7 @@ if user_prompt := st.chat_input("Ask a question! e.g Can you provide me with a f
             full_response += partial_response if partial_response is not None else ""
             message_placeholder.markdown(full_response + "▌")
 
-        full_response, max_citations = response_generator.preprocess_response(full_response)
+        full_response = response_generator.preprocess_response(full_response)
         message_placeholder.markdown(full_response, unsafe_allow_html=True)
 
         assistant_messages = {"role": "assistant", "content": full_response}
@@ -122,10 +122,9 @@ if user_prompt := st.chat_input("Ask a question! e.g Can you provide me with a f
 
         if len(message_citations) > 0:
             assistant_messages["citations"] = response_generator.citations
-            assistant_messages["max_citations"] = max_citations
             print("citations detected")
             # expander version
-            for index, message_citation in enumerate(message_citations[:max_citations]):
+            for index, message_citation in enumerate(message_citations):
                 with st.expander(f"[{index+1}] {message_citation['filepath']}"):
                     st.markdown("""
                     
@@ -192,4 +191,4 @@ with st.sidebar:
         - Responses of this Chatbot are for internal testing purposes only
         - Chinese version is still WIP as focus of this PoC is the English version
         """)
-    # Create download button    
+    # Create download button   
